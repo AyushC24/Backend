@@ -7,8 +7,11 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 const generateAccessAndRefreshTokens = async(userId)=>{
     try{
         const user = await User.findById(userId);
+
         const accessToken = user.generateAccessToken();
+
         const refreshToken = user.generateRefreshToken();
+        // console.log("Error before saving");
 
         // user.accessToken = accessToken;
         user.refreshToken = refreshToken;
@@ -93,7 +96,8 @@ const registerUser  = asyncHandler( async(req,res) =>
 
 const loginUser = asyncHandler(async(req, res)=>{
         const  {email,username,password} = req.body;
-        if(!username || !email) throw new ApiError(400,"Username or Email is required")
+        console.log(req.body);
+        if(!(username || email)) throw new ApiError(400,"Username or Email is required")
         
         const user = await User.findOne(
             {
@@ -131,13 +135,14 @@ const loginUser = asyncHandler(async(req, res)=>{
             new ApiResponse(200,
                 {
                     user: loggedInUser,accessToken,refreshToken
-                }),
+                },
                 "User logged in successfully",
+            )
         )
 
     })
 
-    const logoutUser = asyncHandler(async (req, res) => {
+const logoutUser = asyncHandler(async (req, res) => {
         //how to know which user to log out
         //therefore create auth middleware verifyJWT function
 
