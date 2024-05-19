@@ -300,6 +300,74 @@ const updateUserCoverImage = asyncHandler(async (req, res) =>{
 
 });
 
+const getUserChannelProfile = asyncHandler(async(req, res)=>{
+        const {username} = req.params;
+
+        if(!username?.trim) throw new ApiError(400,"Username is missing");
+        
+        const channel = await User.aggregate([
+            {   //pipeline 1
+                $match:{
+                    username: username?.toLowerCase()
+                }
+            },
+            {   //pipeline 2
+                $lookup:{
+                    from:"subscriptions", //model Subscription is stored in plural and lowercase in db
+                    localField:"_id",  //id of model Subscription
+                    foreignField:"channel", // boss channel se related kitne children hain
+                    as:"subscribers" //21:13
+                }
+            },
+            {   //pipeline 3
+                $lookup:{
+                    from:"subscriptions",
+                    localField:"_id",
+                    foreignField:"subscriber", //boss subscriber se related kitne children hain
+                    as:"subscribedTo"
+                }
+            },
+            {
+                $addFields:{
+                    subscribersCount: {
+                        $size: "$subscribers" //$ isiliye lagaya h kyuki vo field hai
+                    },
+                    channelsSubscribedToCount:{
+                        $size:"$subscribedTo"
+                    },
+                    isSubscribed:{
+                        $cond:{
+                            if:{ $in:[req.user?._id,"$subscribers.subscriber"] },
+                            then: true,
+                            else :false
+                        }
+                    }
+                }
+            },
+            {
+                $project:{
+                    fullName:1,
+                    username:1,
+                    subscribersCount: 1,
+                    isSubscribed:1,
+                    channelsSubscribedToCount: 1,
+                    avatar:1,
+                    coverImage:1,
+                    email:1,
+                }
+            }
+        ]);   
+        console.log(channel); 
+        if(!channel?.length){
+            throw new ApiError(404,"Channel does not exist");
+        }     
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(200,channel[0],"User channel fetched successfully")
+        );
+})
+
 
 export {registerUser,
         loginUser,
@@ -309,5 +377,6 @@ export {registerUser,
         getCurrentUser,
         updateAccountDetails,
         updateUserAvatar,
-        updateUserCoverImage
+        updateUserCoverImage,
+        getUserChannelProfile
 };
