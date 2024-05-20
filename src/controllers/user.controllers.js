@@ -4,6 +4,7 @@ import {User} from "../models/user.models.js"
 import { uploadonCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshTokens = async(userId)=>{
     try{ 
@@ -97,7 +98,7 @@ const registerUser  = asyncHandler( async(req,res) =>
 
 const loginUser = asyncHandler(async(req, res)=>{
         const  {email,username,password} = req.body;
-        console.log(req.body);
+        // console.log(req.body);
         if(!(username || email)) throw new ApiError(400,"Username or Email is required")
         
         const user = await User.findOne(
@@ -149,8 +150,8 @@ const logoutUser = asyncHandler(async (req, res) => {
 
         await User.findByIdAndUpdate(req.user._id,
             {
-                $set:{
-                    refreshToken: undefined
+                $unset:{
+                    refreshToken: 1
                 }
             },
             {
@@ -174,7 +175,8 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 
 const refreshAccessToken = asyncHandler(async (req,res) => {
-    const incomingRefreshToken = req.cookie.refreshToken || req.body.refreshToken
+
+    const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken
 
     if(!incomingRefreshToken)  throw new ApiError(401,"Unauthorized request");
     
@@ -217,7 +219,7 @@ const refreshAccessToken = asyncHandler(async (req,res) => {
 
 const changeCurrentPassword = asyncHandler(async(req,res)=>{
     const {oldPassword,newPassword} = req.body
-
+    // console.log("Oldpass: ", oldPassword);
     const user= await User.findById(req.user?._id);
     const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
     if(!isPasswordCorrect){
@@ -245,16 +247,16 @@ const updateAccountDetails = asyncHandler(async(req,res)=>{
         throw new ApiError(400,"All fields are required");
     }
 
-    const user = User.findByIdAndUpdate(req.user?._id,{
+    const user_details = await User.findByIdAndUpdate(req.user?._id,{
         $set:{
-            fullName,
-            email,
+            fullname:fullName,
+            email:email,
         }
     },{new: true}).select("-password ")
-
+   
     return res
     .status(200)
-    .json(new ApiResponse(200,user,"Account details updated successfully"));
+    .json(new ApiResponse(200,user_details,"Account details updated successfully"));
 
 });
 
@@ -272,7 +274,7 @@ const updateUserAvatar = asyncHandler(async (req, res) =>{
             avatar: avatar.url
         }
     },{new:true}).select("-password");
-    //deleter prev image from cloudinary
+    //delete prev image from cloudinary
     return res
     .status(200)
     .json(new ApiResponse(200,user,"Cover Image Updated Successfully"));
@@ -304,8 +306,8 @@ const getUserChannelProfile = asyncHandler(async(req, res)=>{
         const {username} = req.params;
 
         if(!username?.trim) throw new ApiError(400,"Username is missing");
-        
-        const channel = await User.aggregate([
+        // console.log("Username is: ",username);
+        const channel = await User.aggregate([ //returns an array having elements at position 0
             {   //pipeline 1
                 $match:{
                     username: username?.toLowerCase()
@@ -314,8 +316,8 @@ const getUserChannelProfile = asyncHandler(async(req, res)=>{
             {   //pipeline 2
                 $lookup:{
                     from:"subscriptions", //model Subscription is stored in plural and lowercase in db
-                    localField:"_id",  //id of model Subscription
-                    foreignField:"channel", // boss channel se related kitne children hain
+                    localField:"_id",  //id of user model
+                    foreignField:"channel", // channel of subscriptions model
                     as:"subscribers" //21:13
                 }
             },
@@ -373,7 +375,7 @@ const getWatchedHistory= asyncHandler(async(req, res)=>{
     const user = await User.aggregate([
         {
             $match:{
-                _id: new mongoose.Types.ObjectId(req.user._id), // therefore to match it we conver it to ObjectId
+                _id: new mongoose.Types.ObjectId(req.user._id), // therefore to match it we convert it to ObjectId
             }
         },
         {
