@@ -63,6 +63,13 @@ const getUserChannelSubscribers = asyncHandler(async(req,res)=>{
                     },
             }
         },
+        {
+            $addFields:{
+                Details:{
+                    $first:"$Details"
+                }
+            }
+        }
     ]) ;
     // console.log(subscriberList);
     return res
@@ -70,8 +77,50 @@ const getUserChannelSubscribers = asyncHandler(async(req,res)=>{
             .json(new ApiResponse(200,subscriberList,"List of Subscribers"));
 
 });
+    //return the channel list to which user has subscribed
+const getSubscribedChannels = asyncHandler(async (req, res) => {
+    const { subscriberId } = req.params;
+    const channelList = await Subscription.aggregate([
+        {
+            $match:{
+                subscriber: new mongoose.Types.ObjectId(subscriberId),
+            }
+        },
+        {
+            $lookup:{
+                from:"users",
+                localField:"channel",
+                foreignField:"_id",
+                as:"ChannelDetails"
+            }
+        },
+        {
+            $project:{
+                ChannelDetails:{
+                        username:1,
+                        email:1,
+                        fullName:1,
+                        avatar:1,
+                        coverImage:1,
+                }
+            }
+        },
+        {
+            $addFields:{
+                ChannelDetails:{
+                    $first:"$ChannelDetails"
+                }
+            }
+        }
+    ]);
+
+    return res
+            .status(200)
+            .json(new ApiResponse(200,channelList,"ChannelDetails found"));
+})
 
 export {
     toggleSubscription,
     getUserChannelSubscribers,
+    getSubscribedChannels
 }
