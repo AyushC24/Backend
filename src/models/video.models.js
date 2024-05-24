@@ -8,7 +8,10 @@
             required: true,
         },
         thumbnail:{
-            type: String,
+            type:{
+                url:String,
+                public_id:String,
+            },
             required: true,
         },
         title:{
@@ -29,7 +32,7 @@
         },
         isPublished:{
             type: Boolean,
-            default:true,
+            default:false,
         },
         owner:{
             type: Schema.Types.ObjectId,
