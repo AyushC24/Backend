@@ -11,7 +11,74 @@ const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
     //TODO: get all videos based on query, sort, pagination
 
+    const pipeline=[];
+
+    if(query){
+        pipeline.push({
+            $search:{
+                index:"search-videos",
+                text:{
+                    query:query,
+                    path:["title","description"],
+                }
+            }
+        });
+    }
+
+    if(userId){
+        if(!isValidObjectId(userId)) throw new ApiError(404,"Invalid User");
+        pipeline.push({
+            $match:{isPublished:true},
+        })
+    }
+
+    if(sortBy && sortType){
+        pipeline.push({
+            $sort:{
+                [sortBy]: sortType === "asc" ? 1 : -1,
+            }
+        });
+    }
+    else{
+        pipeline.push({
+            $sort:{
+                createdAt:-1,
+            }
+        });
+    }
+
+    pipeline.push({
+        $lookup:{
+            from:"users",
+            localfield:"owner",
+            foreignfield:"_id",
+            as:"owner",
+            pipeline:[
+                {
+                    $project:{  
+                        username:1,
+                        "avatar.url":1,
+                    }
+                }
+            ]
+        }
+        },
+        {   
+            $unwind:"$owner",  
+        }
+    );
+
+    const videoAggregate =  await Video.aggregate(pipeline);
     
+    const options={
+        page:parseInt(page,10),
+        limit:parseInt(limit,10),
+    }
+    const video = await Video.aggregatePaginate(videoAggregate, options);
+
+    return res
+            .status(200)
+            .json(200,video,"Videos fetched successfully");
 
 })
 
