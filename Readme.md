@@ -1,5 +1,5 @@
-#chai aur backend
+### Learning Backend with Aggregate Pipelines
 
-Learn Backend
+### Model:
+![image](https://github.com/user-attachments/assets/1d237d57-d810-499a-9d81-133dba3ca717)
 
-[Model Link](https://app.eraser.io/workspace/YtPqZ1VogxGy1jzIDkzj)
